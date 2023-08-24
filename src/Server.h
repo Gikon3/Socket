@@ -11,7 +11,12 @@ class Server
 public:
     Server();
     Server(int port);
-    virtual ~Server() {}
+    virtual ~Server();
+    Server(const Server& other) = delete;
+    Server(Server&& other);
+    Server& operator=(const Server& other) = delete;
+    Server& operator=(Server&& other);
+
     void bind(int port);
     Socket accept();
     Socket accept(int timeout);

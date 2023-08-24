@@ -24,6 +24,17 @@ Server::~Server()
     close();
 }
 
+Server::Server(Server&& other)
+{
+    operator=(other);
+}
+
+Server& Server::operator=(Server&& other)
+{
+    std::swap(sockServer_, other.sockServer_);
+    std::swap(isBound_, other.isBound_);
+}
+
 void Server::bind(int port)
 {
     socketBind(port);
@@ -36,7 +47,7 @@ Socket Server::accept()
 
     const int sock = ::accept(sockServer_, NULL, NULL);
     if (sock < 0)
-        throw Exception::ConnectionAcceptFail{strerror(errno)};
+        throw Exception::ConnectionAccept{strerror(errno)};
 
     return sock;
 }
@@ -54,7 +65,7 @@ Socket Server::accept(int timeout)
     if (status == -1)
         throw Exception::Poll{strerror(errno)};
     else if (status == 0)
-        throw Exception::ConnectionAcceptFail{strerror(errno)};
+        throw Exception::ConnectionAccept{strerror(errno)};
 
     return accept();
 }

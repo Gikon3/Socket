@@ -55,10 +55,10 @@ public:
     NotBound() : Exception("Socket is not bound") {}
 };
 
-class ConnectionAcceptFail : public Exception
+class ConnectionAccept : public Exception
 {
 public:
-    ConnectionAcceptFail(const std::string& str) : Exception("Connection accept fail: " + str) {}
+    ConnectionAccept(const std::string& str) : Exception("Connection accept fail: " + str) {}
 };
 
 class Poll : public Exception
