@@ -67,5 +67,11 @@ public:
     Poll(const std::string& str) : Exception("Poll fail: " + str) {}
 };
 
+class Connect : public Exception
+{
+public:
+    Connect(const std::string& str) : Exception("Connect fail: " + str) {}
+};
+
 }
 }
