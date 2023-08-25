@@ -73,5 +73,17 @@ public:
     Connect(const std::string& str) : Exception("Connect fail: " + str) {}
 };
 
+class NotConnect : public Exception
+{
+public:
+    NotConnect() : Exception("Socket is not connect") {}
+};
+
+class Recv : public Exception
+{
+public:
+    Recv(const std::string& str) : Exception("Receive fail: " + str) {}
+};
+
 }
 }
