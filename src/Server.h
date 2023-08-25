@@ -18,8 +18,8 @@ public:
     Server& operator=(Server&& other);
 
     void bind(int port);
-    Socket accept();
-    Socket accept(int timeout);
+    std::unique_ptr<Socket> accept();
+    std::unique_ptr<Socket> accept(int timeout);
     void close();
     bool isBound() const;
     bool isClose() const;

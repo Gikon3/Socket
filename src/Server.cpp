@@ -3,6 +3,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <cstring>
+#include <algorithm>
 #include <vector>
 #include "Server.h"
 #include "Exception.h"
@@ -26,13 +27,14 @@ Server::~Server()
 
 Server::Server(Server&& other)
 {
-    operator=(other);
+    operator=(std::move(other));
 }
 
 Server& Server::operator=(Server&& other)
 {
     std::swap(sockServer_, other.sockServer_);
     std::swap(isBound_, other.isBound_);
+    return *this;
 }
 
 void Server::bind(int port)
@@ -40,7 +42,7 @@ void Server::bind(int port)
     socketBind(port);
 }
 
-Socket Server::accept()
+std::unique_ptr<Socket> Server::accept()
 {
     if (sockServer_ < 0)
         throw Exception::NotBound{};
@@ -49,10 +51,10 @@ Socket Server::accept()
     if (sock < 0)
         throw Exception::ConnectionAccept{strerror(errno)};
 
-    return sock;
+    return std::unique_ptr<Socket>(new Socket(sock));
 }
 
-Socket Server::accept(int timeout)
+std::unique_ptr<Socket> Server::accept(int timeout)
 {
     if (sockServer_ < 0)
         throw Exception::NotBound{};
@@ -65,7 +67,7 @@ Socket Server::accept(int timeout)
     if (status == -1)
         throw Exception::Poll{strerror(errno)};
     else if (status == 0)
-        throw Exception::ConnectionAccept{strerror(errno)};
+        return nullptr;
 
     return accept();
 }
