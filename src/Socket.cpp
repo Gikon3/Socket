@@ -60,7 +60,7 @@ std::vector<char> Socket::recvVec(int size, int timeout)
     if (sock_ < 0)
         throw Exception::NotConnect{};
 
-    if (timeout < 0 && !poll(timeout))
+    if (timeout >= 0 && !poll(timeout))
         return std::vector<char>{};
 
     if (size < 0)
@@ -74,7 +74,7 @@ std::string Socket::recvStr(int size, int timeout)
     if (sock_ < 0)
         throw Exception::NotConnect{};
 
-    if (timeout < 0 && !poll(timeout))
+    if (timeout >= 0 && !poll(timeout))
         return std::string{};
 
     if (size < 0)
@@ -116,7 +116,7 @@ bool Socket::poll(int timeout) const
     if (status == -1)
         throw Exception::Poll{strerror(errno)};
 
-    return status == 0;
+    return status > 0;
 }
 
 std::vector<char> Socket::recvVecInt(int size, int timeout)
@@ -168,7 +168,7 @@ std::vector<char> Socket::recvVecInt(int timeout)
             throw Exception::Recv{strerror(errno)};
         accum.insert(accum.end(), buf, buf + len);
     }
-    while (len > 0);
+    while (len > 0 && poll(0));
 
     return accum;
 }
@@ -185,7 +185,7 @@ std::string Socket::recvStrInt(int timeout)
         buf[len] = '\0';
         accum << buf;
     }
-    while (len > 0);
+    while (len > 0 && poll(0));
 
     return accum.str();
 }
