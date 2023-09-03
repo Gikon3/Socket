@@ -3,7 +3,6 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <cstring>
-#include <algorithm>
 #include <sstream>
 #include "Socket.h"
 #include "Exception.h"
@@ -55,32 +54,58 @@ void Socket::connect(unsigned long addr, int port)
         throw Exception::Connect{strerror(errno)};
 }
 
-std::vector<char> Socket::recvVec(int size, int timeout)
+int Socket::send(const std::vector<char>& data) const
 {
-    if (sock_ < 0)
-        throw Exception::NotConnect{};
-
-    if (timeout >= 0 && !poll(timeout))
-        return std::vector<char>{};
-
-    if (size < 0)
-        return recvVecInt(timeout);
-
-    return recvVecInt(size, timeout);
+    return sendRaw(data.data(), data.size());
 }
 
-std::string Socket::recvStr(int size, int timeout)
+int Socket::send(const std::string& str) const
 {
-    if (sock_ < 0)
+    return sendRaw(str.c_str(), str.length());
+}
+
+std::vector<char> Socket::recvVec(int timeout)
+{
+    if (isClose())
         throw Exception::NotConnect{};
 
-    if (timeout >= 0 && !poll(timeout))
+    if (!poll(timeout))
+        return std::vector<char>{};
+
+    std::vector<char> accum;
+    char buf[256];
+    int len;
+    do {
+        len = ::recv(sock_, buf, sizeof(buf), 0);
+        if (len < 0)
+            throw Exception::Recv{strerror(errno)};
+        accum.insert(accum.end(), buf, buf + len);
+    } while (len > 0 && poll(0));
+
+    return accum;
+}
+
+std::string Socket::recvStr(int timeout)
+{
+    if (isClose())
+        throw Exception::NotConnect{};
+
+    if (!poll(timeout))
         return std::string{};
 
-    if (size < 0)
-        return recvStrInt(timeout);
+    std::stringstream accum;
+    char buf[256];
+    const int bufLen = sizeof(buf) - 1;
+    int len;
+    do {
+        len = ::recv(sock_, buf, sizeof(buf) - 1, 0);
+        if (len < 0)
+            throw Exception::Recv{strerror(errno)};
+        buf[len] = '\0';
+        accum << buf;
+    } while (len > 0 && poll(0));
 
-    return recvStrInt(size, timeout);
+    return accum.str();
 }
 
 void Socket::close()
@@ -100,10 +125,16 @@ Socket::Socket(int sock) :
 {
 }
 
-bool Socket::sendRaw(const char* data, std::size_t size, int timeout)
+int Socket::sendRaw(const char* data, std::size_t size) const
 {
-    // TODO add timeout
-    return ::send(sock_, data, size, 0) == size;
+    if (isClose())
+        throw Exception::NotConnect{};
+
+    const int tsize = ::send(sock_, data, size, 0);
+    if (tsize < 0)
+        throw Exception::Send{strerror(errno)};
+
+    return tsize;
 }
 
 bool Socket::poll(int timeout) const
@@ -113,81 +144,10 @@ bool Socket::poll(int timeout) const
     fds[0].events = POLLIN;
 
     const int status = ::poll(fds.data(), fds.size(), timeout);
-    if (status == -1)
+    if (status < 0)
         throw Exception::Poll{strerror(errno)};
 
     return status > 0;
-}
-
-std::vector<char> Socket::recvVecInt(int size, int timeout)
-{
-    std::vector<char> accum;
-    char buf[256];
-    int len;
-    do {
-        len = ::recv(sock_, buf, size >= 0 && size < sizeof(buf) ? size : sizeof(buf), 0);
-        if (len < 0)
-            throw Exception::Recv{strerror(errno)};
-        accum.insert(accum.end(), buf, buf + len);
-        if (size > 0)
-            size -= len;
-    }
-    while (len > 0 && size > 0);
-
-    return accum;
-}
-
-std::string Socket::recvStrInt(int size, int timeout)
-{
-    std::stringstream accum;
-    char buf[256];
-    const int bufLen = sizeof(buf) - 1;
-    int len;
-    do {
-        len = ::recv(sock_, buf, size >= 0 && size < bufLen ? size : bufLen, 0);
-        if (len < 0)
-            throw Exception::Recv{strerror(errno)};
-        buf[len] = '\0';
-        accum << buf;
-        if (size > 0)
-            size -= len;
-    }
-    while (len > 0 && size > 0);
-
-    return accum.str();
-}
-
-std::vector<char> Socket::recvVecInt(int timeout)
-{
-    std::vector<char> accum;
-    char buf[256];
-    int len;
-    do {
-        len = ::recv(sock_, buf, sizeof(buf), 0);
-        if (len < 0)
-            throw Exception::Recv{strerror(errno)};
-        accum.insert(accum.end(), buf, buf + len);
-    }
-    while (len > 0 && poll(0));
-
-    return accum;
-}
-
-std::string Socket::recvStrInt(int timeout)
-{
-    std::stringstream accum;
-    char buf[256];
-    int len;
-    do {
-        len = ::recv(sock_, buf, sizeof(buf) - 1, 0);
-        if (len < 0)
-            throw Exception::Recv{strerror(errno)};
-        buf[len] = '\0';
-        accum << buf;
-    }
-    while (len > 0 && poll(0));
-
-    return accum.str();
 }
 
 Socket& operator<<(Socket& socket, const std::vector<char>& data)
