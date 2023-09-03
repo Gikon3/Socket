@@ -3,7 +3,6 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <cstring>
-#include <algorithm>
 #include <vector>
 #include "Server.h"
 #include "Exception.h"
@@ -17,7 +16,7 @@ Server::Server()
 
 Server::Server(int port)
 {
-    socketBind(port);
+    bind(port);
 }
 
 Server::~Server()
@@ -33,71 +32,18 @@ Server::Server(Server&& other)
 Server& Server::operator=(Server&& other)
 {
     std::swap(sockServer_, other.sockServer_);
-    std::swap(isBound_, other.isBound_);
     return *this;
 }
 
 void Server::bind(int port)
 {
-    socketBind(port);
-}
+    if (!isClose())
+        throw Exception::AlreadyBound{port};
 
-std::unique_ptr<Socket> Server::accept()
-{
-    if (sockServer_ < 0)
-        throw Exception::NotBound{};
-
-    const int sock = ::accept(sockServer_, NULL, NULL);
-    if (sock < 0)
-        throw Exception::ConnectionAccept{strerror(errno)};
-
-    return std::unique_ptr<Socket>(new Socket(sock));
-}
-
-std::unique_ptr<Socket> Server::accept(int timeout)
-{
-    if (sockServer_ < 0)
-        throw Exception::NotBound{};
-
-    std::vector<pollfd> fds(1);
-    fds[0].fd = sockServer_;
-    fds[0].events = POLLIN;
-
-    const int status = ::poll(fds.data(), fds.size(), timeout);
-    if (status == -1)
-        throw Exception::Poll{strerror(errno)};
-    else if (status == 0)
-        return nullptr;
-
-    return accept();
-}
-
-void Server::close()
-{
-    if (sockServer_ >= 0)
-        ::close(sockServer_);
-    sockServer_ = -1;
-}
-
-bool Server::isBound() const
-{
-    return isBound_;
-}
-
-bool Server::isClose() const
-{
-    return sockServer_ >= 0;
-}
-
-void Server::socketBind(int port)
-{
     if (port < 0)
         throw Exception::SmallPort{port};
-    else if (port > 65535)
+    if (port > 65535)
         throw Exception::BigPort{port};
-
-    if (isBound_)
-        throw Exception::AlreadyBound{port};
 
     sockServer_ = ::socket(AF_INET, SOCK_STREAM, 0);
     if (sockServer_ < 0)
@@ -110,10 +56,50 @@ void Server::socketBind(int port)
     if (::bind(sockServer_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0)
         throw Exception::Bind{strerror(errno)};
 
-    if (listen(sockServer_, 1) != 0)
+    if (::listen(sockServer_, 1) != 0)
         throw Exception::Listen{strerror(errno)};
+}
 
-    isBound_ = true;
+std::unique_ptr<Socket> Server::accept() const
+{
+    if (isClose())
+        throw Exception::NotBound{};
+
+    const int sock = ::accept(sockServer_, NULL, NULL);
+    if (sock < 0)
+        throw Exception::ConnectionAccept{strerror(errno)};
+
+    return std::unique_ptr<Socket>(new Socket(sock));
+}
+
+std::unique_ptr<Socket> Server::accept(int timeout) const
+{
+    if (isClose())
+        throw Exception::NotBound{};
+
+    std::vector<pollfd> fds(1);
+    fds[0].fd = sockServer_;
+    fds[0].events = POLLIN;
+
+    const int status = ::poll(fds.data(), fds.size(), timeout);
+    if (status < 0)
+        throw Exception::Poll{strerror(errno)};
+    if (status == 0)
+        return nullptr;
+
+    return accept();
+}
+
+void Server::close()
+{
+    if (sockServer_ >= 0)
+        ::close(sockServer_);
+    sockServer_ = -1;
+}
+
+bool Server::isClose() const
+{
+    return sockServer_ < 0;
 }
 
 }
