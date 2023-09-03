@@ -1,25 +1,23 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.13)
+project(Socket VERSION 0.1 LANGUAGES CXX)
 
-project(socket VERSION 0.1.0)
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+add_library(${PROJECT_NAME} STATIC "")
+add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 
-set(HEADER_FILES
-    Exception.h
-    Server.h
-    Socket.h
+target_include_directories(${PROJECT_NAME} PRIVATE src include/Socket)
+target_include_directories(${PROJECT_NAME} INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
 )
 
-set(SOURCE_FILES
-    Server.cpp
-    Socket.cpp
+target_sources(${PROJECT_NAME} PRIVATE
+    include/Socket/Exception.h
+    include/Socket/Server.h
+    include/Socket/Socket.h
 )
 
-set(INCLUDE_DIRS
-    src
+target_sources(${PROJECT_NAME} PRIVATE
+    src/Server.cpp
+    src/Socket.cpp
 )
-
-add_library(${PROJECT_NAME} INTERFACE)
-
-target_include_directories(${PROJECT_NAME} INTERFACE ${INCLUDE_DIRS})
-target_include_directories(${PROJECT_NAME} INTERFACE ${PROJECT_BINARY_DIR})
