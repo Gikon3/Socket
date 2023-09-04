@@ -3,6 +3,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <cstring>
+#include <algorithm>
 #include <vector>
 #include "Server.h"
 #include "Exception.h"
@@ -48,6 +49,10 @@ void Server::bind(int port)
     sockServer_ = ::socket(AF_INET, SOCK_STREAM, 0);
     if (sockServer_ < 0)
         throw Exception::Create{strerror(errno)};
+
+    const int enable = 1;
+    if (::setsockopt(sockServer_, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable)) < 0)
+        throw Exception::Option{strerror(errno)};
 
     sockaddr_in addr;
     addr.sin_family = AF_INET;

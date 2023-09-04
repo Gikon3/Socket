@@ -37,6 +37,12 @@ public:
     Create(const std::string& str) : Exception("Create fail: " + str) {}
 };
 
+class Option : public Exception
+{
+public:
+    Option(const std::string& str) : Exception("Set option fail: " + str) {}
+};
+
 class Bind : public Exception
 {
 public:
