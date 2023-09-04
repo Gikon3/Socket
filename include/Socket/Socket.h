@@ -6,6 +6,12 @@
 namespace Socket
 {
 
+struct Address
+{
+    unsigned char num[4];
+    unsigned short port;
+};
+
 class Server;
 
 class Socket
@@ -13,14 +19,17 @@ class Socket
     friend Server;
 public:
     Socket();
-    Socket(unsigned long addr, int port);
+    Socket(unsigned int addr, unsigned short port);
+    Socket(Address address);
     virtual ~Socket();
     Socket(const Socket& other) = delete;
     Socket(Socket&& other);
     Socket& operator=(const Socket& other) = delete;
     Socket& operator=(Socket&& other);
 
-    void connect(unsigned long addr, int port);
+    void connect();
+    void connect(unsigned int addr, unsigned short port);
+    void connect(Address address);
     int send(const std::vector<char>& data) const;
     int send(const std::string& str) const;
     std::vector<char> recvVec(int timeout = -1);
@@ -29,12 +38,14 @@ public:
     bool isClose() const;
 
 private:
-    Socket(int sock);
+    Socket(int sock, unsigned int addr, unsigned short port);
     int sendRaw(const char* data, std::size_t size) const;
     bool poll(int timeout) const;
 
 private:
     int sock_ = -1;
+    unsigned int address_ = 0;
+    unsigned short port_ = 0;
 };
 
 Socket& operator<<(Socket& socket, const std::vector<char>& data);

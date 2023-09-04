@@ -14,13 +14,17 @@ Socket::Socket()
 {
 }
 
-Socket::Socket(unsigned long addr, int port)
+Socket::Socket(unsigned int addr, unsigned short port) :
+    address_(addr), port_(port)
 {
     sock_ = socket(AF_INET, SOCK_STREAM, 0);
     if (sock_ < 0)
         throw Exception::Create{strerror(errno)};
+}
 
-    connect(addr, port);
+Socket::Socket(Address address) :
+    Socket(address.num[0] << 24 | address.num[1] << 16 | address.num[2] << 8 | address.num[3], address.port)
+{
 }
 
 Socket::~Socket()
@@ -39,19 +43,33 @@ Socket& Socket::operator=(Socket&& other)
     return *this;
 }
 
-void Socket::connect(unsigned long addr, int port)
+void Socket::connect()
 {
-    if (port < 0)
-        throw Exception::SmallPort{port};
-    else if (port > 65535)
-        throw Exception::BigPort{port};
+    if (!isClose())
+        throw Exception::AlreadyConnect{};
 
     sockaddr_in saddr;
     saddr.sin_family = AF_INET;
-    saddr.sin_port = htons(port);
-    saddr.sin_addr.s_addr = htonl(addr);
+    saddr.sin_port = htons(port_);
+    saddr.sin_addr.s_addr = htonl(address_);
     if (::connect(sock_, reinterpret_cast<sockaddr*>(&saddr), sizeof(saddr)) < 0)
         throw Exception::Connect{strerror(errno)};
+}
+
+void Socket::connect(unsigned int addr, unsigned short port)
+{
+    if (!isClose())
+        throw Exception::AlreadyConnect{};
+
+    address_ = addr;
+    port_ = port;
+
+    connect();
+}
+
+void Socket::connect(Address address)
+{
+    connect(address.num[0] << 24 | address.num[1] << 16 | address.num[2] << 8 | address.num[3], address.port);
 }
 
 int Socket::send(const std::vector<char>& data) const
@@ -120,8 +138,8 @@ bool Socket::isClose() const
     return sock_ < 0;
 }
 
-Socket::Socket(int sock) :
-    sock_(sock)
+Socket::Socket(int sock, unsigned int addr, unsigned short port) :
+    sock_(sock), address_(addr), port_(port)
 {
 }
 

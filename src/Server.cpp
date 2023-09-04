@@ -15,9 +15,14 @@ Server::Server()
 {
 }
 
-Server::Server(int port)
+Server::Server(unsigned int addr, unsigned short port) :
+    address_(addr), port_(port)
 {
-    bind(port);
+}
+
+Server::Server(Address address) :
+    Server(address.num[0] << 24 | address.num[1] << 16 | address.num[2] << 8 | address.num[3], address.port)
+{
 }
 
 Server::~Server()
@@ -36,15 +41,10 @@ Server& Server::operator=(Server&& other)
     return *this;
 }
 
-void Server::bind(int port)
+void Server::bind()
 {
     if (!isClose())
-        throw Exception::AlreadyBound{port};
-
-    if (port < 0)
-        throw Exception::SmallPort{port};
-    if (port > 65535)
-        throw Exception::BigPort{port};
+        throw Exception::AlreadyBound{port_};
 
     sockServer_ = ::socket(AF_INET, SOCK_STREAM, 0);
     if (sockServer_ < 0)
@@ -54,15 +54,31 @@ void Server::bind(int port)
     if (::setsockopt(sockServer_, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable)) < 0)
         throw Exception::Option{strerror(errno)};
 
-    sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    if (::bind(sockServer_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0)
+    sockaddr_in saddr;
+    saddr.sin_family = AF_INET;
+    saddr.sin_port = htons(port_);
+    saddr.sin_addr.s_addr = htonl(address_);
+    if (::bind(sockServer_, reinterpret_cast<sockaddr*>(&saddr), sizeof(saddr)) < 0)
         throw Exception::Bind{strerror(errno)};
 
     if (::listen(sockServer_, 1) != 0)
         throw Exception::Listen{strerror(errno)};
+}
+
+void Server::bind(unsigned int addr, unsigned short port)
+{
+    if (!isClose())
+        throw Exception::AlreadyBound{port};
+
+    address_ = addr;
+    port_ = port;
+
+    bind();
+}
+
+void Server::bind(Address address)
+{
+    bind(address.num[0] << 24 | address.num[1] << 16 | address.num[2] << 8 | address.num[3], address.port);
 }
 
 std::unique_ptr<Socket> Server::accept() const
@@ -74,7 +90,7 @@ std::unique_ptr<Socket> Server::accept() const
     if (sock < 0)
         throw Exception::ConnectionAccept{strerror(errno)};
 
-    return std::unique_ptr<Socket>(new Socket(sock));
+    return std::unique_ptr<Socket>(new Socket(sock, address_, port_));
 }
 
 std::unique_ptr<Socket> Server::accept(int timeout) const

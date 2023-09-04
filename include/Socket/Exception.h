@@ -13,28 +13,52 @@ public:
     Exception(const std::string& str) : std::runtime_error("Socket exception. " + str) {}
 };
 
-class SmallPort : public Exception
+class Create : public Exception
 {
 public:
-    SmallPort(int port) : Exception("Port " + std::to_string(port) + " is too small") {}
+    Create(const std::string& str) : Exception("Create fail: " + str) {}
 };
 
-class BigPort : public Exception
+class AlreadyConnect : public Exception
 {
 public:
-    BigPort(int port) : Exception("Port " + std::to_string(port) + " is too big") {}
+    AlreadyConnect() : Exception("Socket is already connect") {}
+};
+
+class Connect : public Exception
+{
+public:
+    Connect(const std::string& str) : Exception("Connect fail: " + str) {}
+};
+
+class NotConnect : public Exception
+{
+public:
+    NotConnect() : Exception("Socket is not connect") {}
+};
+
+class Send : public Exception
+{
+public:
+    Send(const std::string& str) : Exception("Send fail: " + str) {}
+};
+
+class Poll : public Exception
+{
+public:
+    Poll(const std::string& str) : Exception("Poll fail: " + str) {}
+};
+
+class Recv : public Exception
+{
+public:
+    Recv(const std::string& str) : Exception("Receive fail: " + str) {}
 };
 
 class AlreadyBound : public Exception
 {
 public:
     AlreadyBound(int port) : Exception("Socket is already bound: " + std::to_string(port)) {}
-};
-
-class Create : public Exception
-{
-public:
-    Create(const std::string& str) : Exception("Create fail: " + str) {}
 };
 
 class Option : public Exception
@@ -65,36 +89,6 @@ class ConnectionAccept : public Exception
 {
 public:
     ConnectionAccept(const std::string& str) : Exception("Connection accept fail: " + str) {}
-};
-
-class Poll : public Exception
-{
-public:
-    Poll(const std::string& str) : Exception("Poll fail: " + str) {}
-};
-
-class Connect : public Exception
-{
-public:
-    Connect(const std::string& str) : Exception("Connect fail: " + str) {}
-};
-
-class NotConnect : public Exception
-{
-public:
-    NotConnect() : Exception("Socket is not connect") {}
-};
-
-class Send : public Exception
-{
-public:
-    Send(const std::string& str) : Exception("Send fail: " + str) {}
-};
-
-class Recv : public Exception
-{
-public:
-    Recv(const std::string& str) : Exception("Receive fail: " + str) {}
 };
 
 }
