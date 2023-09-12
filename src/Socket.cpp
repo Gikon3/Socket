@@ -1,8 +1,5 @@
-#include <sys/socket.h>
-#include <sys/poll.h>
-#include <netinet/in.h>
-#include <unistd.h>
-#include <cstring>
+#include "linuxApi.h"
+#include "windowsApi.h"
 #include <sstream>
 #include "Socket.h"
 #include "Exception.h"
@@ -10,16 +7,17 @@
 namespace Socket
 {
 
-Socket::Socket()
-{
-}
-
 Socket::Socket(unsigned int addr, unsigned short port) :
     address_(addr), port_(port)
 {
-    sock_ = socket(AF_INET, SOCK_STREAM, 0);
+#if defined(WIN32)
+    WSADATA wsaData;
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != NO_ERROR)
+        throw Exception::WsaInit(errorStr());
+#endif
+    sock_ = ::socket(AF_INET, SOCK_STREAM, 0);
     if (sock_ < 0)
-        throw Exception::Create{strerror(errno)};
+        throw Exception::Create{errorStr()};
 }
 
 Socket::Socket(Address address) :
@@ -32,12 +30,12 @@ Socket::~Socket()
     close();
 }
 
-Socket::Socket(Socket&& other)
+Socket::Socket(Socket&& other) noexcept
 {
     operator=(std::move(other));
 }
 
-Socket& Socket::operator=(Socket&& other)
+Socket& Socket::operator=(Socket&& other) noexcept
 {
     std::swap(sock_, other.sock_);
     return *this;
@@ -45,15 +43,12 @@ Socket& Socket::operator=(Socket&& other)
 
 void Socket::connect()
 {
-    if (!isClose())
-        throw Exception::AlreadyConnect{};
-
     sockaddr_in saddr;
     saddr.sin_family = AF_INET;
     saddr.sin_port = htons(port_);
     saddr.sin_addr.s_addr = htonl(address_);
-    if (::connect(sock_, reinterpret_cast<sockaddr*>(&saddr), sizeof(saddr)) < 0)
-        throw Exception::Connect{strerror(errno)};
+    if (::connect(sock_, reinterpret_cast<sockaddr*>(&saddr), sizeof(saddr)) != 0)
+        throw Exception::Connect{errorStr()};
 }
 
 void Socket::connect(unsigned int addr, unsigned short port)
@@ -96,7 +91,7 @@ std::vector<char> Socket::recvVec(int timeout)
     do {
         len = ::recv(sock_, buf, sizeof(buf), 0);
         if (len < 0)
-            throw Exception::Recv{strerror(errno)};
+            throw Exception::Recv{errorStr()};
         accum.insert(accum.end(), buf, buf + len);
     } while (len > 0 && poll(0));
 
@@ -118,7 +113,7 @@ std::string Socket::recvStr(int timeout)
     do {
         len = ::recv(sock_, buf, sizeof(buf) - 1, 0);
         if (len < 0)
-            throw Exception::Recv{strerror(errno)};
+            throw Exception::Recv{errorStr()};
         buf[len] = '\0';
         accum << buf;
     } while (len > 0 && poll(0));
@@ -150,7 +145,7 @@ int Socket::sendRaw(const char* data, std::size_t size) const
 
     const int tsize = ::send(sock_, data, size, 0);
     if (tsize < 0)
-        throw Exception::Send{strerror(errno)};
+        throw Exception::Send{errorStr()};
 
     return tsize;
 }
@@ -163,7 +158,7 @@ bool Socket::poll(int timeout) const
 
     const int status = ::poll(fds.data(), fds.size(), timeout);
     if (status < 0)
-        throw Exception::Poll{strerror(errno)};
+        throw Exception::Poll{errorStr()};
 
     return status > 0;
 }

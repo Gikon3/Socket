@@ -18,14 +18,13 @@ class Socket
 {
     friend Server;
 public:
-    Socket();
-    Socket(unsigned int addr, unsigned short port);
+    Socket(unsigned int addr = 0, unsigned short port = 0);
     Socket(Address address);
     virtual ~Socket();
     Socket(const Socket& other) = delete;
-    Socket(Socket&& other);
+    Socket(Socket&& other) noexcept;
     Socket& operator=(const Socket& other) = delete;
-    Socket& operator=(Socket&& other);
+    Socket& operator=(Socket&& other) noexcept;
 
     void connect();
     void connect(unsigned int addr, unsigned short port);

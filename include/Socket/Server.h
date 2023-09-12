@@ -9,14 +9,13 @@ namespace Socket
 class Server
 {
 public:
-    Server();
-    Server(unsigned int addr, unsigned short port);
+    Server(unsigned int addr = 0, unsigned short port = 0);
     Server(Address address);
     virtual ~Server();
     Server(const Server& other) = delete;
-    Server(Server&& other);
+    Server(Server&& other) noexcept;
     Server& operator=(const Server& other) = delete;
-    Server& operator=(Server&& other);
+    Server& operator=(Server&& other) noexcept;
 
     void bind();
     void bind(unsigned int address, unsigned short port);

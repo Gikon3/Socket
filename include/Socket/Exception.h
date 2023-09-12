@@ -13,6 +13,14 @@ public:
     Exception(const std::string& str) : std::runtime_error("Socket exception. " + str) {}
 };
 
+#if defined(WIN32)
+class WsaInit : public Exception
+{
+public:
+    WsaInit(const std::string& str) : Exception("WSA init fail: " + str) {}
+};
+#endif
+
 class Create : public Exception
 {
 public:

@@ -1,8 +1,5 @@
-#include <sys/socket.h>
-#include <sys/poll.h>
-#include <netinet/in.h>
-#include <unistd.h>
-#include <cstring>
+#include "linuxApi.h"
+#include "windowsApi.h"
 #include <algorithm>
 #include <vector>
 #include "Server.h"
@@ -11,13 +8,14 @@
 namespace Socket
 {
 
-Server::Server()
-{
-}
-
 Server::Server(unsigned int addr, unsigned short port) :
     address_(addr), port_(port)
 {
+#if defined(WIN32)
+    WSADATA wsaData;
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != NO_ERROR)
+        throw Exception::WsaInit(errorStr());
+#endif
 }
 
 Server::Server(Address address) :
@@ -30,12 +28,12 @@ Server::~Server()
     close();
 }
 
-Server::Server(Server&& other)
+Server::Server(Server&& other) noexcept
 {
     operator=(std::move(other));
 }
 
-Server& Server::operator=(Server&& other)
+Server& Server::operator=(Server&& other) noexcept
 {
     std::swap(sockServer_, other.sockServer_);
     return *this;
@@ -48,21 +46,21 @@ void Server::bind()
 
     sockServer_ = ::socket(AF_INET, SOCK_STREAM, 0);
     if (sockServer_ < 0)
-        throw Exception::Create{strerror(errno)};
+        throw Exception::Create{errorStr()};
 
     const int enable = 1;
-    if (::setsockopt(sockServer_, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable)) < 0)
-        throw Exception::Option{strerror(errno)};
+    if (::setsockopt(sockServer_, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&enable), sizeof(enable)) < 0)
+        throw Exception::Option{errorStr()};
 
     sockaddr_in saddr;
     saddr.sin_family = AF_INET;
     saddr.sin_port = htons(port_);
     saddr.sin_addr.s_addr = htonl(address_);
-    if (::bind(sockServer_, reinterpret_cast<sockaddr*>(&saddr), sizeof(saddr)) < 0)
-        throw Exception::Bind{strerror(errno)};
+    if (::bind(sockServer_, reinterpret_cast<sockaddr*>(&saddr), sizeof(saddr)) != 0)
+        throw Exception::Bind{errorStr()};
 
     if (::listen(sockServer_, 1) != 0)
-        throw Exception::Listen{strerror(errno)};
+        throw Exception::Listen{errorStr()};
 }
 
 void Server::bind(unsigned int addr, unsigned short port)
@@ -88,7 +86,7 @@ std::unique_ptr<Socket> Server::accept() const
 
     const int sock = ::accept(sockServer_, NULL, NULL);
     if (sock < 0)
-        throw Exception::ConnectionAccept{strerror(errno)};
+        throw Exception::ConnectionAccept{errorStr()};
 
     return std::unique_ptr<Socket>(new Socket(sock, address_, port_));
 }
@@ -104,7 +102,7 @@ std::unique_ptr<Socket> Server::accept(int timeout) const
 
     const int status = ::poll(fds.data(), fds.size(), timeout);
     if (status < 0)
-        throw Exception::Poll{strerror(errno)};
+        throw Exception::Poll{errorStr()};
     if (status == 0)
         return nullptr;
 

@@ -18,6 +18,18 @@ target_sources(${PROJECT_NAME} PRIVATE
 )
 
 target_sources(${PROJECT_NAME} PRIVATE
+    src/linuxApi.h
     src/Server.cpp
     src/Socket.cpp
+    src/windowsApi.h
 )
+
+if (WIN32)
+    find_library(ws2_32_LIBRARY_PATH ws2_32 REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PRIVATE ${ws2_32_LIBRARY_PATH})
+    target_compile_definitions(${PROJECT_NAME} PRIVATE -DWIN32)
+endif()
+
+if (UNIX)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE -DUNIX)
+endif()
