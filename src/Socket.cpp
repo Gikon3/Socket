@@ -15,9 +15,6 @@ Socket::Socket(unsigned int addr, unsigned short port) :
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != NO_ERROR)
         throw Exception::WsaInit(errorStr());
 #endif
-    sock_ = ::socket(AF_INET, SOCK_STREAM, 0);
-    if (sock_ < 0)
-        throw Exception::Create{errorStr()};
 }
 
 Socket::Socket(Address address) :
@@ -43,6 +40,13 @@ Socket& Socket::operator=(Socket&& other) noexcept
 
 void Socket::connect()
 {
+    if (!isClose())
+        throw Exception::AlreadyConnect{};
+
+    sock_ = ::socket(AF_INET, SOCK_STREAM, 0);
+    if (sock_ < 0)
+        throw Exception::Create{errorStr()};
+
     sockaddr_in saddr;
     saddr.sin_family = AF_INET;
     saddr.sin_port = htons(port_);
